@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <title>小红书内容整理器</title>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="小红书助手"/>
+  <meta name="theme-color" content="#1a1a1a"/>
+  <!-- PWA Manifest inline -->
+  <link rel="manifest" href="data:application/json;charset=utf-8,%7B%22name%22%3A%22%E5%B0%8F%E7%BA%A2%E4%B9%A6%E5%86%85%E5%AE%B9%E6%95%B4%E7%90%86%E5%99%A8%22%2C%22short_name%22%3A%22%E5%B0%8F%E7%BA%A2%E4%B9%A6%E5%8A%A9%E6%89%8B%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23f7f5f2%22%2C%22theme_color%22%3A%22%231a1a1a%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fpng%3Bbase64%2CiVBORw0KGgoAAAANSUhEUgAAAIAAAACACAMAAAD04JH5AAAAA1BMVEUaGhoKMmIOAAAACklEQVR4nGNiAAAABgABJjN9GQAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAYSURBVHja7cEBDQAAAMKg909tDjchQAEAAE4GCAABAAEAAf9nCgAAAABJRU5ErkJggg%3D%3D%22%2C%22sizes%22%3A%22128x128%22%2C%22type%22%3A%22image%2Fpng%22%7D%5D%7D"/>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+    body{background:#f7f5f2;font-family:'PingFang SC','Hiragino Sans GB',sans-serif;min-height:100vh;padding:0;overflow-x:hidden}
+    .wrap{max-width:560px;margin:0 auto;padding:40px 20px 60px}
+    .header{margin-bottom:36px}
+    .header-sub{font-size:11px;letter-spacing:3px;color:#bbb;text-transform:uppercase;margin-bottom:6px}
+    .header-title{font-size:22px;font-weight:600;color:#1a1a1a;letter-spacing:.5px}
+    .section{margin-bottom:28px}
+    .section-label{font-size:11px;color:#bbb;letter-spacing:2px;margin-bottom:10px;font-weight:500}
+    /* API Key */
+    .apikey-wrap{background:#fff;border:1.5px solid #e8e4de;border-radius:10px;padding:14px;margin-bottom:28px}
+    .apikey-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+    .apikey-label{font-size:11px;color:#bbb;letter-spacing:2px}
+    .apikey-toggle{font-size:12px;color:#999;cursor:pointer;text-decoration:underline;background:none;border:none}
+    .apikey-input{width:100%;border:none;outline:none;font-size:13px;color:#555;font-family:monospace;background:transparent}
+    .apikey-hint{font-size:11px;color:#bbb;margin-top:6px}
+    .apikey-hint a{color:#999}
+    /* Voice */
+    .mic-btn{display:flex;align-items:center;gap:8px;padding:11px 20px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:500;transition:all .2s;margin-bottom:12px}
+    .mic-btn.idle{background:#1a1a1a;color:#fff}
+    .mic-btn.recording{background:#ff4d4f;color:#fff}
+    .mic-dot{width:8px;height:8px;border-radius:50%;background:#ff4d4f;display:inline-block}
+    .mic-btn.recording .mic-dot{background:#fff;animation:pulse 1s infinite}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+    textarea{width:100%;padding:12px 14px;border-radius:10px;border:1.5px solid #e8e4de;background:#fff;font-size:14px;color:#333;resize:vertical;outline:none;line-height:1.75;font-family:inherit;min-height:120px}
+    textarea:focus{border-color:#aaa}
+    /* Images */
+    .drop-zone{border:1.5px dashed #d0cbc4;border-radius:10px;padding:22px;text-align:center;cursor:pointer;background:#faf9f7;margin-bottom:14px}
+    .drop-zone:active{background:#f0ede8}
+    .drop-icon{font-size:20px;margin-bottom:4px}
+    .drop-hint{font-size:13px;color:#aaa}
+    .img-grid{display:flex;flex-wrap:wrap;gap:10px}
+    .img-item{position:relative}
+    .img-item img{width:76px;height:76px;object-fit:cover;border-radius:8px;display:block}
+    .img-del{position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:none;background:#1a1a1a;color:#fff;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+    /* Generate */
+    .gen-btn{width:100%;padding:14px;border-radius:10px;border:none;background:#1a1a1a;color:#fff;font-size:14px;font-weight:600;cursor:pointer;letter-spacing:1px;margin-bottom:28px;transition:all .2s}
+    .gen-btn:disabled{background:#ccc;cursor:not-allowed}
+    .error{color:#ff4d4f;font-size:13px;margin-bottom:12px;line-height:1.5}
+    /* Result */
+    .result-box{background:#fff;border-radius:10px;padding:20px;border:1.5px solid #e8e4de;white-space:pre-wrap;line-height:1.85;font-size:14px;color:#2a2a2a;margin-bottom:12px}
+    .copy-btn{padding:10px 20px;border-radius:8px;border:1.5px solid #1a1a1a;background:#fff;color:#1a1a1a;font-size:13px;font-weight:500;cursor:pointer;transition:all .2s}
+    .copy-btn.copied{background:#1a1a1a;color:#fff}
+    /* Install banner */
+    .install-bar{position:fixed;bottom:0;left:0;right:0;background:#1a1a1a;color:#fff;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;font-size:13px;z-index:100}
+    .install-bar button{background:#fff;color:#1a1a1a;border:none;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer}
+    .install-bar .dismiss{background:transparent;color:#aaa;border:none;font-size:20px;cursor:pointer;padding:0 0 0 12px}
+    .interim{color:#aaa}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div class="header-sub">小红书内容整理器</div>
+    <div class="header-title">把想法整理成文字</div>
+  </div>
+
+  <!-- API Key -->
+  <div class="apikey-wrap">
+    <div class="apikey-top">
+      <span class="apikey-label">ANTHROPIC API KEY</span>
+      <button class="apikey-toggle" onclick="toggleKeyVis()">显示</button>
+    </div>
+    <input id="apikey" class="apikey-input" type="password" placeholder="sk-ant-..." oninput="saveKey()"/>
+    <div class="apikey-hint">免费获取：<a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>　密钥仅存在本地，不会上传</div>
+  </div>
+
+  <!-- Voice -->
+  <div class="section">
+    <div class="section-label">01 / 语音描述</div>
+    <button class="mic-btn idle" id="micBtn" onclick="toggleMic()">
+      <span class="mic-dot"></span>
+      <span id="micLabel">按住说话</span>
+    </button>
+    <textarea id="voiceText" placeholder="语音识别结果显示在这里，也可以直接输入：项目背景、现场感受、材料工艺、合作方……口语随便说，AI 帮你整理。"></textarea>
+  </div>
+
+  <!-- Images -->
+  <div class="section">
+    <div class="section-label">02 / 上传图片</div>
+    <div class="drop-zone" onclick="document.getElementById('imgInput').click()" id="dropZone">
+      <div class="drop-icon">↑</div>
+      <div class="drop-hint">点击上传图片（最多6张）</div>
+    </div>
+    <input id="imgInput" type="file" accept="image/*" multiple style="display:none" onchange="handleFiles(this.files)"/>
+    <div class="img-grid" id="imgGrid"></div>
+  </div>
+
+  <!-- Error -->
+  <div class="error" id="error" style="display:none"></div>
+
+  <!-- Generate -->
+  <button class="gen-btn" id="genBtn" onclick="generate()">生成文案</button>
+
+  <!-- Result -->
+  <div class="section" id="resultSection" style="display:none">
+    <div class="section-label">03 / 生成结果</div>
+    <div class="result-box" id="resultBox"></div>
+    <button class="copy-btn" id="copyBtn" onclick="copyResult()">复制文案</button>
+  </div>
+</div>
+
+<!-- Install banner -->
+<div class="install-bar" id="installBar" style="display:none">
+  <span>添加到主屏幕，像 App 一样使用</span>
+  <div style="display:flex;align-items:center">
+    <button onclick="installApp()">安装</button>
+    <button class="dismiss" onclick="document.getElementById('installBar').style.display='none'">×</button>
+  </div>
+</div>
+
+<script>
+const STYLE_PROMPT = `你是一位有品味的设计师/创作者，正在为小红书写项目记录或日常分享。
+
+风格参考（请严格模仿以下气质）：
+- "开启与珍存｜MAGI PAPER纸样册\n我们与@石开研设计事务所 一起设计了美杰纸业在2025年制作的面向客户的新纸样册。\n在这个设计中采用了钥匙与抽屉的意象，象征着每张纸样所蕴含的开启新合作的可能性。所有的纸样编排为5个主题，每个主题为一小册，每册封面镶嵌了一把钥匙，最后5册会与灰板制成的框架形成一个抽屉柜。\n钥匙有5种形状，由3D打印制成，呼应了我们在2024年制作的PLA色卡钥匙系列。"
+- "电话内部的空间感\n在深圳OpenM的现场。最近几次都喜欢用白色纸盒的堆叠来做展示，希望有一种在仓库里刚刚开盒的轻松感。\n＊整理照片的时候很中意现场这个工业的墙面背景"
+- "蓝色四叶草的诞生｜DéDéDé设计好朋友\n国庆期间我们将参与ééé在武汉延庆里带来的新企划。\n有些忐忑，届时再给同学们汇报情况"
+
+写作规则：
+1. 标题简洁有质感，可用「｜」分隔，或直接一句描述性短语
+2. 正文像朋友之间的叙述，不煽情，不刻意强调吸引眼球
+3. 有细节（材料、工艺、现场感受、合作方）
+4. 自然分段，每段之间空一行
+5. 偶尔用「＊」标注一个小的个人感受或补充说明
+6. 结尾可以是期待、邀请或就此结束，不需要强行收尾
+7. 地点、时间、合作方自然融入正文
+8. 不超过300字，不加hashtag，最多在标题偶尔用一个emoji
+只输出文案本身，不要任何解释。`;
+
+let images = [];
+let recognition = null;
+let isRecording = false;
+let deferredPrompt = null;
+
+// Key persistence
+window.addEventListener('load', () => {
+  const k = localStorage.getItem('xhs_apikey');
+  if (k) document.getElementById('apikey').value = k;
+});
+function saveKey() { localStorage.setItem('xhs_apikey', document.getElementById('apikey').value.trim()); }
+function toggleKeyVis() {
+  const el = document.getElementById('apikey');
+  const btn = document.querySelector('.apikey-toggle');
+  if (el.type === 'password') { el.type = 'text'; btn.textContent = '隐藏'; }
+  else { el.type = 'password'; btn.textContent = '显示'; }
+}
+
+// Microphone
+function toggleMic() {
+  if (isRecording) { stopMic(); return; }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { showError("当前浏览器不支持语音输入，建议使用 Chrome 或 Safari。"); return; }
+  recognition = new SR();
+  recognition.lang = 'zh-CN';
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.onresult = e => {
+    let final = '', interim = '';
+    for (let i = 0; i < e.results.length; i++) {
+      if (e.results[i].isFinal) final += e.results[i][0].transcript;
+      else interim += e.results[i][0].transcript;
+    }
+    const base = document.getElementById('voiceText').dataset.base || '';
+    if (final) {
+      const newBase = base + final;
+      document.getElementById('voiceText').dataset.base = newBase;
+      document.getElementById('voiceText').value = newBase;
+    } else {
+      document.getElementById('voiceText').value = base + interim;
+    }
+  };
+  recognition.onerror = e => {
+    stopMic();
+    if (e.error === 'not-allowed') showError('麦克风权限被拒绝，请在手机设置 → Safari/Chrome → 麦克风 中允许访问。');
+    else if (e.error !== 'aborted') showError('录音出错：' + e.error);
+  };
+  recognition.onend = () => stopMic();
+  recognition.start();
+  isRecording = true;
+  document.getElementById('micBtn').className = 'mic-btn recording';
+  document.getElementById('micLabel').textContent = '点击停止';
+  document.getElementById('voiceText').dataset.base = document.getElementById('voiceText').value;
+}
+function stopMic() {
+  recognition && recognition.stop();
+  isRecording = false;
+  document.getElementById('micBtn').className = 'mic-btn idle';
+  document.getElementById('micLabel').textContent = '按住说话';
+}
+
+// Images
+function handleFiles(files) {
+  Array.from(files).forEach(f => {
+    if (!f.type.startsWith('image/') || images.length >= 6) return;
+    const r = new FileReader();
+    r.onload = e => {
+      images.push({ base64: e.target.result.split(',')[1], mime: f.type, preview: e.target.result });
+      renderImages();
+    };
+    r.readAsDataURL(f);
+  });
+}
+function renderImages() {
+  const g = document.getElementById('imgGrid');
+  g.innerHTML = images.map((img, i) =>
+    `<div class="img-item"><img src="${img.preview}"/><button class="img-del" onclick="removeImg(${i})">×</button></div>`
+  ).join('');
+}
+function removeImg(i) { images.splice(i, 1); renderImages(); }
+
+// Drag drop
+const dz = document.getElementById('dropZone');
+dz.addEventListener('dragover', e => e.preventDefault());
+dz.addEventListener('drop', e => { e.preventDefault(); handleFiles(e.dataTransfer.files); });
+
+// Generate
+async function generate() {
+  const apiKey = document.getElementById('apikey').value.trim();
+  const voiceText = document.getElementById('voiceText').value.trim();
+  clearError();
+  if (!apiKey) { showError('请先填入 Anthropic API Key。'); return; }
+  if (!voiceText && images.length === 0) { showError('请录入语音描述或上传图片。'); return; }
+
+  const btn = document.getElementById('genBtn');
+  btn.disabled = true; btn.textContent = '生成中…';
+  document.getElementById('resultSection').style.display = 'none';
+
+  try {
+    const content = [];
+    images.forEach(img => content.push({ type: 'image', source: { type: 'base64', media_type: img.mime, data: img.base64 } }));
+    content.push({ type: 'text', text: `用户描述：${voiceText || '（无文字描述，请根据图片生成）'}\n\n请根据以上内容生成小红书文案。` });
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, system: STYLE_PROMPT, messages: [{ role: 'user', content }] })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    const text = (data.content || []).map(b => b.text || '').join('');
+    if (!text) throw new Error('返回内容为空');
+    document.getElementById('resultBox').textContent = text;
+    document.getElementById('resultSection').style.display = 'block';
+    document.getElementById('copyBtn').className = 'copy-btn';
+    document.getElementById('copyBtn').textContent = '复制文案';
+    document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) {
+    showError('生成出错：' + e.message);
+  }
+  btn.disabled = false; btn.textContent = '生成文案';
+}
+
+function copyResult() {
+  navigator.clipboard.writeText(document.getElementById('resultBox').textContent);
+  const btn = document.getElementById('copyBtn');
+  btn.className = 'copy-btn copied'; btn.textContent = '已复制 ✓';
+  setTimeout(() => { btn.className = 'copy-btn'; btn.textContent = '复制文案'; }, 2000);
+}
+
+function showError(msg) { const e = document.getElementById('error'); e.textContent = msg; e.style.display = 'block'; }
+function clearError() { document.getElementById('error').style.display = 'none'; }
+
+// PWA Install
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault(); deferredPrompt = e;
+  document.getElementById('installBar').style.display = 'flex';
+});
+function installApp() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(() => { deferredPrompt = null; document.getElementById('installBar').style.display = 'none'; });
+}
+</script>
+</body>
+</html>
